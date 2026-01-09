@@ -1,0 +1,9 @@
+{
+	"enabledTables": [],
+	"defaultTables": [],
+	"customUrls": {},
+	"autoSubmit": true,
+	"retryEnabled": true,
+	"retryMaxAttempts": 5,
+	"logRetentionDays": 30
+}
