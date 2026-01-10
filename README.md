@@ -1,5 +1,7 @@
 # IndexNow Plugin for CMS Builder
 
+> **Note:** This plugin only works with CMS Builder, available for download at https://www.interactivetools.com/download/
+
 Automatically notify search engines (Bing, Yandex, etc.) when content is created, updated, or deleted using the IndexNow protocol.
 
 ## Features
