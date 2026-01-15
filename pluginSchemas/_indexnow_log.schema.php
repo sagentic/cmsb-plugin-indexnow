@@ -100,3 +100,4 @@ return [
 		'indexed'          => 1,
 	],
 ];
+

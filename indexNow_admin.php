@@ -376,6 +376,7 @@ function adminSettings(): void
 
 	// Load current settings
 	$settings = loadPluginSettings();
+	$oldSettings = $settings; // Keep copy of old settings
 
 	// Handle form submission
 	if (@$_REQUEST['saveSettings']) {
@@ -410,6 +411,25 @@ function adminSettings(): void
 		$settings['retryEnabled'] = !empty($_REQUEST['retryEnabled']);
 		$settings['retryMaxAttempts'] = max(1, min(10, intval($_REQUEST['retryMaxAttempts'] ?? 5)));
 		$settings['logRetentionDays'] = max(1, min(365, intval($_REQUEST['logRetentionDays'] ?? 30)));
+		$settings['useEnvStorage'] = !empty($_REQUEST['useEnvStorage']);
+		$settings['envFilename'] = trim($_REQUEST['envFilename'] ?? '.env.cms.php') ?: '.env.cms.php';
+
+		// If switching to env storage, move the API key
+		if ($settings['useEnvStorage'] && !($oldSettings['useEnvStorage'] ?? false)) {
+			$currentKey = \settings('indexnow_api_key');
+			if ($currentKey) {
+				saveApiKeySetting($currentKey); // Will save to .env
+			}
+		}
+		// If switching from env storage to settings, move the API key back
+		elseif (!$settings['useEnvStorage'] && ($oldSettings['useEnvStorage'] ?? false)) {
+			$currentKey = \CMS::env('APP_INDEXNOW_API_KEY');
+			if ($currentKey) {
+				global $SETTINGS;
+				$SETTINGS['indexnow_api_key'] = $currentKey;
+				saveSettings();
+			}
+		}
 
 		if (savePluginSettings($settings)) {
 			$message = t('Settings saved successfully');
@@ -573,6 +593,33 @@ function adminSettings(): void
 	$content .= '<div class="col-sm-10">';
 	$content .= '<input type="number" class="form-control" style="width:100px; display:inline-block" name="logRetentionDays" id="logRetentionDays" value="' . intval($settings['logRetentionDays']) . '" min="1" max="365">';
 	$content .= ' <span class="help-inline">' . t('days') . '</span>';
+	$content .= '</div></div>';
+
+	// Environment Storage Toggle
+	$hasEnvPath = !empty(\settings('_dotEnvPath'));
+	$content .= '<div class="form-group">';
+	$content .= '<div class="col-sm-2 control-label">' . t('API Key Storage') . '</div>';
+	$content .= '<div class="col-sm-10">';
+	$content .= '<div class="checkbox"><label>';
+	$content .= '<input type="hidden" name="useEnvStorage" value="0">';
+	if ($hasEnvPath) {
+		$content .= '<input type="checkbox" name="useEnvStorage" id="useEnvStorage" value="1"' . ($settings['useEnvStorage'] ? ' checked' : '') . '> ';
+		$content .= t('Store API key in .env.php file (more secure)');
+	} else {
+		$content .= '<input type="checkbox" name="useEnvStorage" id="useEnvStorage" value="1" disabled> ';
+		$content .= t('Store API key in .env.php file (more secure)');
+		$content .= '<div class="help-block" style="color:#999">' . t('Configure _dotEnvPath in CMS settings to enable this option') . '</div>';
+	}
+	$content .= '</label></div>';
+	$content .= '</div></div>';
+
+	// Env Filename field
+	$envFilename = $settings['envFilename'] ?? '.env.cms.php';
+	$content .= '<div class="form-group">';
+	$content .= '<label for="envFilename" class="col-sm-2 control-label">' . t('Env Filename') . '</label>';
+	$content .= '<div class="col-sm-10">';
+	$content .= '<input type="text" class="form-control" style="width:300px;display:inline-block" name="envFilename" id="envFilename" value="' . \htmlencode($envFilename) . '" placeholder=".env.cms.php">';
+	$content .= '<p class="help-block" style="margin-top:8px">' . t('The filename for your environment secrets file (e.g., .env.cms.php, .env.php, .env).') . '</p>';
 	$content .= '</div></div>';
 
 	$content .= '</div>'; // end form-horizontal

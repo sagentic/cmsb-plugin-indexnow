@@ -18,6 +18,7 @@ Automatically notify search engines (Bing, Yandex, etc.) when content is created
 
 1. Copy the `indexNow` folder to your plugins directory:
 
+    - `/webadmin/plugins/indexNow/` (for this site)
     - `/cmsb/plugins/indexNow/` (standard CMSB installation)
 
 2. Ensure PHP files have proper permissions (readable by web server):
@@ -164,9 +165,22 @@ The plugin intelligently handles single-record sections (like "About Us" pages):
 -   Internal data tables (accounts, settings)
 -   Tables without public pages
 
+## Version Compatibility
+
+**Version 1.01** (Current) - For CMSB 3.82+
+-   Adds support for CMSB 3.82's native .env file functionality
+-   Configurable .env filename setting
+-   API keys can be stored in .env files outside web root for enhanced security
+-   Backward compatible with in-database API key storage
+
+**Version 1.00** - For CMSB 3.81 and earlier
+-   Does not include .env file support
+-   Stores API keys in plugin settings only
+-   Available for download from the GitHub releases page
+
 ## Requirements
 
--   CMS Builder 3.50 or higher
+-   CMS Builder 3.50 or higher (3.82+ recommended for .env support)
 -   PHP 8.0 or higher
 -   cURL extension enabled
 -   Write access to web root (for API key file)

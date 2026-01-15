@@ -34,6 +34,7 @@ function loadPluginSettings(): array
 		'retryEnabled' => true,
 		'retryMaxAttempts' => 5,
 		'logRetentionDays' => 30,
+		'envFilename' => '.env.cms.php', // Default env filename
 	];
 
 	if (!file_exists($settingsFile) || !is_readable($settingsFile)) {
@@ -290,6 +291,12 @@ function getApiKey(): string
 		return $GLOBALS['INDEXNOW_API_KEY'];
 	}
 
+	// Check environment file first (more secure)
+	$envKey = \CMS::env('APP_INDEXNOW_API_KEY');
+	if ($envKey) {
+		return $envKey;
+	}
+
 	// Check if we have a stored key in settings
 	$storedKey = \settings('indexnow_api_key');
 	if ($storedKey) {
@@ -316,16 +323,127 @@ function generateApiKey(): string
 }
 
 /**
- * Save API key to CMS settings
+ * Save API key to CMS settings or .env file
  *
  * @param string $apiKey API key to save
  */
 function saveApiKeySetting(string $apiKey): void
 {
-	global $SETTINGS;
+	$pluginSettings = loadPluginSettings();
+	$useEnvStorage = $pluginSettings['useEnvStorage'] ?? false;
 
+	// Save to .env.php if configured
+	if ($useEnvStorage && saveApiKeyToEnv($apiKey)) {
+		// Successfully saved to .env, clear from settings if present
+		global $SETTINGS;
+		if (isset($SETTINGS['indexnow_api_key'])) {
+			$SETTINGS['indexnow_api_key'] = '';
+			saveSettings();
+		}
+		return;
+	}
+
+	// Fall back to settings storage
+	global $SETTINGS;
 	$SETTINGS['indexnow_api_key'] = $apiKey;
 	saveSettings();
+}
+
+/**
+ * Save API key to .env.php file (more secure option)
+ *
+ * @param string $apiKey API key to save
+ * @return bool True on success, false on failure
+ */
+function saveApiKeyToEnv(string $apiKey): bool
+{
+	// Get the _dotEnvPath from settings
+	$envPath = \settings('_dotEnvPath');
+	if (!$envPath) {
+		return false; // No .env path configured
+	}
+
+	// Get configured filename from plugin settings
+	$pluginSettings = loadPluginSettings();
+	$envFilename = $pluginSettings['envFilename'] ?? '.env.cms.php';
+
+	// If envPath is just a filename, use it as-is
+	// Otherwise, replace the filename part with the configured filename
+	if (basename($envPath) !== $envPath) {
+		// It's a path - replace just the filename
+		$envPath = dirname($envPath) . '/' . $envFilename;
+	} else {
+		// It's just a filename already
+		$envPath = $envFilename;
+	}
+
+	// Resolve absolute path
+	$absPath = str_starts_with($envPath, '.') ? CMS_DIR . '/' . $envPath : $envPath;
+
+	// Don't use realpath yet - the file might not exist
+	if (!file_exists($absPath)) {
+		return false; // File doesn't exist
+	}
+
+	$absPath = realpath($absPath);
+
+	// Load current .env contents
+	$env = include $absPath;
+	if (!is_array($env)) {
+		return false; // Invalid format
+	}
+
+	// Update the API key
+	$env['APP_INDEXNOW_API_KEY'] = $apiKey;
+
+	// Write back to file
+	$content = "<?php\n";
+	$content .= "/**\n";
+	$content .= " * Environment Secrets File\n";
+	$content .= " *\n";
+	$content .= " * Keeps sensitive credentials out of data/settings*.php files.\n";
+	$content .= " * This file should be backed up separately and never committed to git.\n";
+	$content .= " */\n";
+	$content .= "return [\n\n";
+	$content .= "    /**\n";
+	$content .= "     * CMS SETTINGS\n";
+	$content .= "     * -------------------------------------------------------------------------\n";
+	$content .= "     * These keys override related values in settings.*.php\n";
+	$content .= "     */\n\n";
+
+	// Write each key-value pair
+	foreach ($env as $key => $value) {
+		// Add section headers
+		if ($key === 'DB_HOSTNAME') {
+			$content .= "    // Database\n";
+		} elseif ($key === 'SMTP_HOSTNAME') {
+			$content .= "\n    // Outgoing Mail\n";
+		} elseif (str_starts_with($key, 'APP_') && !isset($lastAppKey)) {
+			$content .= "\n    /**\n";
+			$content .= "     * CUSTOM VALUES\n";
+			$content .= "     * -------------------------------------------------------------------------\n";
+			$content .= "     * Add your own keys for plugins, APIs, etc.\n";
+			$content .= "     * Access with: \\CMS::env('APP_MY_KEY')\n";
+			$content .= "     * Prefix with APP_ to avoid conflicts with future CMS keys.\n";
+			$content .= "     */\n\n";
+			$lastAppKey = true;
+		}
+
+		// Format the value
+		$formattedValue = var_export($value, true);
+		if (is_string($value)) {
+			$formattedValue = "'" . addslashes($value) . "'";
+		}
+
+		// Add key-value pair with proper spacing
+		$padding = str_repeat(' ', max(1, 31 - strlen($key)));
+		$content .= "    '{$key}'{$padding}=> {$formattedValue},\n";
+	}
+
+	$content .= "\n];\n";
+
+	// Write to file
+	return @file_put_contents($absPath, $content) !== false;
 }
 
 /**

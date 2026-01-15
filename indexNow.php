@@ -2,7 +2,7 @@
 /*
 Plugin Name: IndexNow
 Description: Automatically notify search engines when content changes using the IndexNow protocol
-Version: 1.00
+Version: 1.01
 CMS Version Required: 3.50
 Author: Sagentic Web Design
 Author URI: https://www.sagentic.com
@@ -25,7 +25,7 @@ $GLOBALS['INDEXNOW_EXCLUDE_TABLES']       = array('accounts'); // Legacy: Use Se
 // DON'T UPDATE ANYTHING BELOW THIS LINE
 
 $GLOBALS['INDEXNOW_PLUGIN'] = true;
-$GLOBALS['INDEXNOW_VERSION'] = '1.00';
+$GLOBALS['INDEXNOW_VERSION'] = '1.01';
 
 // Load helper functions
 require_once __DIR__ . '/indexNow_functions.php';

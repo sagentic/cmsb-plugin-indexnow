@@ -1,9 +1,12 @@
 {
-	"enabledTables": [],
-	"defaultTables": [],
-	"customUrls": {},
-	"autoSubmit": true,
-	"retryEnabled": true,
-	"retryMaxAttempts": 5,
-	"logRetentionDays": 30
+    "enabledTables": [
+        "plugins_library"
+    ],
+    "defaultTables": [],
+    "customUrls": [],
+    "autoSubmit": true,
+    "retryEnabled": true,
+    "retryMaxAttempts": 5,
+    "logRetentionDays": 365,
+    "useEnvStorage": true
 }
